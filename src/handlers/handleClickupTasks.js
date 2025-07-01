@@ -158,7 +158,7 @@ async function handleClickupTasks(event) {
           continue;
         }
       } else if (field === 'content') {
-        finalValue = cleanQuillDelta(item.after);
+        finalValue = item.after;
       } else {
         try {
           finalValue = typeof item.after === 'string' ? JSON.parse(item.after) : item.after;
