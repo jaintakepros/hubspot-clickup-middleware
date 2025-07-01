@@ -43,6 +43,15 @@ function isLikelyDelta(obj) {
   return obj && typeof obj === 'object' && Array.isArray(obj.ops);
 }
 
+function deltaContainsRawHTML(delta) {
+  return (
+    isLikelyDelta(delta) &&
+    delta.ops.length === 1 &&
+    typeof delta.ops[0].insert === 'string' &&
+    /<[^>]+>/.test(delta.ops[0].insert)
+  );
+}
+
 const pendingClickUpSyncs = new Set();
 
 function getOneWeekFromNowISO() {
@@ -198,7 +207,12 @@ async function handleClickupTasks(event) {
           }
 
           if (isLikelyDelta(rawContent)) {
-            finalValue = rawContent; // ya está en formato válido
+            if (deltaContainsRawHTML(rawContent)) {
+              console.warn(`⚠️ Delta contains raw HTML inside insert. Converting properly.`);
+              finalValue = htmlToQuillDelta(rawContent.ops[0].insert);
+            } else {
+              finalValue = rawContent;
+            }
           } else {
             const html = typeof item.after === 'string' ? item.after : item.after?.value || '';
             finalValue = htmlToQuillDelta(html);
