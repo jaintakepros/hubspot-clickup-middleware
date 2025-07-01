@@ -56,18 +56,6 @@ function deltaContainsRawHTML(delta) {
   );
 }
 
-function buildFathomDelta(url) {
-  return {
-    ops: [
-      {
-        insert: 'WATCH FATHOM CLIP',
-        attributes: { link: url }
-      },
-      { insert: '\n' }
-    ]
-  };
-}
-
 const pendingClickUpSyncs = new Set();
 
 function getOneWeekFromNowISO() {
