@@ -159,7 +159,9 @@ async function handleClickupTasks(event) {
         let rawContent = item.after;
 
         if (isLikelyDelta(rawContent)) {
-          const fathomLink = rawContent.ops.find(op => op.attributes?.link?.includes('fathom.video'))?.attributes?.link;
+          const fathomOp = rawContent.ops.find(op => op.attributes?.link?.includes('fathom.video'));
+          const fathomLink = fathomOp?.attributes?.link;
+
           if (fathomLink) {
             finalValue = `WATCH FATHOM CLIP: ${fathomLink}`;
             console.log(`📢 Detected Fathom link in Delta: ${finalValue}`);
@@ -167,6 +169,7 @@ async function handleClickupTasks(event) {
             finalValue = rawContent.ops.map(op => typeof op.insert === 'string' ? op.insert : '').join('').trim();
             console.log(`📢 Non-Fathom Delta content (plain text): ${finalValue}`);
           }
+
         } else {
           const html = typeof rawContent === 'string' ? rawContent : rawContent?.value || '';
           const match = html.match(/href="(https:\/\/fathom\.video\/share\/[^"]+)"/);
@@ -181,13 +184,12 @@ async function handleClickupTasks(event) {
           }
         }
 
-        // Evita enviar objetos como contenido
         if (typeof finalValue !== 'string') {
           console.warn(`⚠️ Unexpected content format. Fallback to empty string.`);
           finalValue = '';
         }
 
-        console.dir(finalValue, { depth: null, colors: true });
+        console.log('✅ Final value for content:', finalValue);
       } else {
         try {
           finalValue = typeof item.after === 'string' ? JSON.parse(item.after) : item.after;

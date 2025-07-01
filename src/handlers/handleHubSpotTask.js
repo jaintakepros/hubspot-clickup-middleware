@@ -118,15 +118,22 @@ async function handleHubSpotTask(event) {
       if (hsBody && typeof hsBody === 'string') {
         if (hsBody.includes('WATCH FATHOM CLIP')) {
           console.log('🔎 Detected WATCH FATHOM CLIP in hs_task_body');
-          const match = hsBody.match(/href="(https:\/\/fathom\.video\/share\/[^"]+)"/);
+
+          const match = hsBody.match(/https:\/\/fathom\.video\/share\/[^\s"<]+/);
           if (match) {
-            console.log('✅ Fathom URL matched:', match[1]);
-            description = `WATCH FATHOM CLIP: ${match[1]}`; // Texto plano con el enlace
-          }else{
+            console.log('✅ Fathom URL matched:', match[0]);
+            description = {
+              ops: [
+                { insert: `WATCH FATHOM CLIP: ${match[0]}\n` }
+              ]
+            };
+          } else {
             console.warn('⚠️ WATCH FATHOM CLIP found but no URL matched');
           }
+
         } else {
-          description = htmlToQuillDelta(hsBody); // Delta genérico
+          // Delta genérico desde HTML
+          description = htmlToQuillDelta(hsBody);
         }
       }
 
