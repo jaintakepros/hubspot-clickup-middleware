@@ -166,10 +166,10 @@ async function handleClickupTasks(event) {
         if (isLikelyDelta(rawContent)) {
           finalValue = isFathomClipContent(rawContent)
             ? deltaToFathomHTML(rawContent)
-            : rawContent;
+            : rawContent.ops.map(op => op.insert).join('').trim(); // ✅ corregido
         } else {
           const html = typeof item.after === 'string' ? item.after : item.after?.value || '';
-          const match = html.match(/href=\"(https:\/\/fathom\.video\/share\/[^\"]+)/);
+          const match = html.match(/href="(https:\/\/fathom\.video\/share\/[^"]+)/);
           finalValue = html.includes('WATCH FATHOM CLIP') && match
             ? buildFathomDelta(match[1])
             : htmlToQuillDelta(html);
