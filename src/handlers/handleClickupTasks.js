@@ -159,26 +159,35 @@ async function handleClickupTasks(event) {
         let rawContent = item.after;
 
         if (isLikelyDelta(rawContent)) {
-          // Si es un Delta, procesamos para encontrar el enlace de Fathom
           const fathomLink = rawContent.ops.find(op => op.attributes?.link?.includes('fathom.video'))?.attributes?.link;
           if (fathomLink) {
             finalValue = `WATCH FATHOM CLIP: ${fathomLink}`;
             console.log(`📢 Detected Fathom link in Delta: ${finalValue}`);
           } else {
-            finalValue = rawContent.ops.map(op => op.insert).join('').trim(); // Si no es Fathom, solo texto
-            console.log(`📢 Non-Fathom Delta content: ${finalValue}`);
+            finalValue = rawContent.ops.map(op => typeof op.insert === 'string' ? op.insert : '').join('').trim();
+            console.log(`📢 Non-Fathom Delta content (plain text): ${finalValue}`);
           }
         } else {
-          // Si es HTML, verificamos el enlace de Fathom
           const html = typeof rawContent === 'string' ? rawContent : rawContent?.value || '';
-          const match = html.match(/href="(https:\/\/fathom\.video\/share\/[^\"]+)/);
-          finalValue = html.includes('WATCH FATHOM CLIP') && match
-            ? `WATCH FATHOM CLIP: ${match[1]}` // Si contiene Fathom, formateamos a texto plano
-            : htmlToQuillDelta(html); // Para otros casos, procesamos como Quill Delta
+          const match = html.match(/href="(https:\/\/fathom\.video\/share\/[^"]+)"/);
 
-          console.log(`📢 HTML content processed: ${finalValue}`);
-          console.dir(finalValue, { depth: null, colors: true });
+          if (html.includes('WATCH FATHOM CLIP') && match) {
+            finalValue = `WATCH FATHOM CLIP: ${match[1]}`;
+            console.log(`📢 Detected Fathom link in HTML: ${finalValue}`);
+          } else {
+            const $ = cheerio.load(html);
+            finalValue = $.text().trim();
+            console.log(`📢 HTML converted to plain text: ${finalValue}`);
+          }
         }
+
+        // Evita enviar objetos como contenido
+        if (typeof finalValue !== 'string') {
+          console.warn(`⚠️ Unexpected content format. Fallback to empty string.`);
+          finalValue = '';
+        }
+
+        console.dir(finalValue, { depth: null, colors: true });
       } else {
         try {
           finalValue = typeof item.after === 'string' ? JSON.parse(item.after) : item.after;
