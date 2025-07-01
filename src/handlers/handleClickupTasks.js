@@ -157,10 +157,12 @@ async function handleClickupTasks(event) {
         finalValue = PRIORITY_MAP[hubspotType]?.[afterPriority] || null;
       } else if (field === 'content') {
         let rawContent = item.after;
+        const isDelta = isLikelyDelta(rawContent);
+        let fathomLink = null;
 
-        if (isLikelyDelta(rawContent)) {
+        if (isDelta) {
           const fathomOp = rawContent.ops.find(op => op.attributes?.link?.includes('fathom.video'));
-          const fathomLink = fathomOp?.attributes?.link;
+          fathomLink = fathomOp?.attributes?.link;
 
           if (fathomLink) {
             finalValue = `WATCH FATHOM CLIP: ${fathomLink}`;
@@ -172,13 +174,25 @@ async function handleClickupTasks(event) {
 
         } else {
           const html = typeof rawContent === 'string' ? rawContent : rawContent?.value || '';
-          const $ = cheerio.load(html);
-          const fathomLink = $('a[href*="fathom.video/share"]').attr('href');
+
+          try {
+            // Intentamos parsear como Delta serializado (stringified)
+            const parsed = JSON.parse(html);
+            if (parsed?.ops?.length) {
+              const fathomOp = parsed.ops.find(op => op.attributes?.link?.includes('fathom.video'));
+              fathomLink = fathomOp?.attributes?.link;
+            }
+          } catch (err) {
+            // Si no es JSON, lo tratamos como HTML real
+            const $ = cheerio.load(html);
+            fathomLink = $('a[href*="fathom.video/share"]').attr('href');
+          }
 
           if (html.includes('WATCH FATHOM CLIP') && fathomLink) {
             finalValue = `WATCH FATHOM CLIP: ${fathomLink}`;
-            console.log(`✅ Fathom link extracted from HTML: ${fathomLink}`);
+            console.log(`✅ Fathom link extracted from HTML or parsed Delta: ${fathomLink}`);
           } else {
+            const $ = cheerio.load(html);
             finalValue = $.text().trim();
             console.log(`📢 HTML converted to plain text: ${finalValue}`);
           }
