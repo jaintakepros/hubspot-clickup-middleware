@@ -1,11 +1,53 @@
-const { getCompanyById, getHubSpotTaskDetails, getHubspotUserById } = require('../services/hubspot');
-const { findClickUpSpaceByCompanyName, findSupportTicketListInSpace, findClickUpUserByEmail } = require('../services/clickup');
-const { saveSyncedItem, findSyncedItem } = require('../db/syncedItems');
-const { updateClickUpTaskFromHubspotTask } = require('../services/clickup');
+const {
+  getCompanyById,
+  getHubSpotTaskDetails,
+  getHubspotUserById
+} = require('../services/hubspot');
+const {
+  findClickUpSpaceByCompanyName,
+  findSupportTicketListInSpace,
+  findClickUpUserByEmail
+} = require('../services/clickup');
+const {
+  saveSyncedItem,
+  findSyncedItem
+} = require('../db/syncedItems');
+const {
+  updateClickUpTaskFromHubspotTask
+} = require('../services/clickup');
+const {
+  buildFathomDelta
+} = require('../utils/fathomUtils');
+const cheerio = require('cheerio');
 const axios = require('axios');
 
 const processingEvents = new Set();
-const pendingSyncs = new Set(); // ✅ evita múltiples propertyChange sobre el mismo ID
+const pendingSyncs = new Set();
+
+// Utilidad para convertir HTML plano a Quill Delta
+function htmlToQuillDelta(html) {
+  const $ = cheerio.load(html);
+  const ops = [];
+
+  function walk(node) {
+    if (node.type === 'text') {
+      ops.push({ insert: node.data });
+    } else if (node.name === 'a') {
+      const text = $(node).text();
+      const href = $(node).attr('href');
+      ops.push({
+        insert: text,
+        attributes: { link: href }
+      });
+    } else if (node.children) {
+      node.children.forEach(walk);
+    }
+  }
+
+  $('body').contents().each((_, el) => walk(el));
+  ops.push({ insert: '\n' });
+  return { ops };
+}
 
 async function handleHubSpotTask(event) {
   const taskId = event.objectId;
@@ -39,9 +81,7 @@ async function handleHubSpotTask(event) {
         return;
       }
 
-      // Compañía
-      console.log(task?.associations)
-      console.log(`Company Associated to Task: ${task.associations?.companies?.results?.[0]?.id}`);
+      // Compañía asociada
       const companyId = task?.associations?.companies?.results?.[0]?.id || '35461787401';
       const company = await getCompanyById(companyId);
       const companyName = company?.properties?.name || 'Generic Company';
@@ -55,7 +95,7 @@ async function handleHubSpotTask(event) {
         return;
       }
 
-      // Assignee
+      // Asignado
       let assignees = [];
       try {
         const hubspotUser = await getHubspotUserById(task.properties.hubspot_owner_id);
@@ -65,14 +105,29 @@ async function handleHubSpotTask(event) {
         }
       } catch (e) {}
 
+      // Fecha
       const dueDate = task.properties?.hs_timestamp
         ? new Date(task.properties.hs_timestamp).getTime()
         : undefined;
-      const description = task.properties.hs_task_body?.replace(/<[^>]*>/g, '').trim();
+
+      // Descripción (manejo especial para Fathom)
+      let description = 'No description';
+      const hsBody = task.properties.hs_task_body;
+
+      if (hsBody && typeof hsBody === 'string') {
+        if (hsBody.includes('WATCH FATHOM CLIP')) {
+          const match = hsBody.match(/href="(https:\/\/fathom\.video\/share\/[^"]+)"/);
+          if (match) {
+            description = buildFathomDelta(match[1]); // Delta con link
+          }
+        } else {
+          description = htmlToQuillDelta(hsBody); // Delta genérico
+        }
+      }
 
       const taskData = {
         name: task.properties.hs_task_subject || 'No Subject',
-        description: description || 'No description',
+        description,
         due_date: dueDate,
         assignees,
         priority: task.properties.hs_task_priority === 'HIGH' ? 2 :
@@ -94,6 +149,7 @@ async function handleHubSpotTask(event) {
         hubspotObjectType: 'task',
         clickupTaskId: response.data.id,
       });
+
       console.log(`💾 Sync saved for HubSpot task ${taskId}`);
 
     } else if (eventType === 'object.propertyChange') {
@@ -136,7 +192,7 @@ async function handleHubSpotTask(event) {
         return;
       }
 
-      // Si ya está sincronizado, actualizar la task
+      // Actualizar ClickUp si ya estaba sincronizado
       await updateClickUpTaskFromHubspotTask({
         hubspotTaskId: taskId,
         clickupTaskId: synced.clickup_task_id,
@@ -154,4 +210,5 @@ async function handleHubSpotTask(event) {
 module.exports = {
   handleHubSpotTask,
 };
+
 
