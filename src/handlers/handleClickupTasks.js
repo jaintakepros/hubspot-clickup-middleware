@@ -184,7 +184,8 @@ async function handleClickupTasks(event) {
           continue;
         }
       } else if (field === 'content') {
-        finalValue = htmlToQuillDelta(item.after);
+        const html = typeof item.after === 'string' ? item.after : item.after?.value || '';
+        finalValue = htmlToQuillDelta(html);
       } else {
         try {
           finalValue = typeof item.after === 'string' ? JSON.parse(item.after) : item.after;
