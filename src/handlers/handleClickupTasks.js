@@ -182,7 +182,7 @@ async function handleClickupTasks(event) {
         }
 
         if (typeof finalValue === 'object' && !Array.isArray(finalValue) && finalValue !== null) {
-          finalValue = finalValue.value || JSON.stringify(finalValue);
+          finalValue = finalValue.value || finalValue;
         }
       }
 
