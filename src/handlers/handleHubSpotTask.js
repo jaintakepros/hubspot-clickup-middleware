@@ -40,9 +40,9 @@ async function handleHubSpotTask(event) {
       }
 
       // Compañía
-      console.log(task.associations)
-      console.log(task.associations.companies.results);
-      const companyId = task.associations?.companies?.results?.[0]?.id || '35461787401';
+      console.log(task?.associations)
+      console.log(`Company Associated to Task: ${task.associations?.companies?.results?.[0]?.id}`);
+      const companyId = task?.associations?.companies?.results?.[0]?.id || '35461787401';
       const company = await getCompanyById(companyId);
       const companyName = company?.properties?.name || 'Generic Company';
       const space = await findClickUpSpaceByCompanyName(companyName);
