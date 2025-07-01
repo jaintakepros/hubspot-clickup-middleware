@@ -157,22 +157,26 @@ async function handleClickupTasks(event) {
         finalValue = PRIORITY_MAP[hubspotType]?.[afterPriority] || null;
       } else if (field === 'content') {
         let rawContent = item.after;
-        try {
-          if (typeof rawContent === 'string') rawContent = JSON.parse(rawContent);
-        } catch (err) {
-          console.warn(`⚠️ Could not parse content as JSON. Assuming HTML.`, err.message);
-        }
 
         if (isLikelyDelta(rawContent)) {
-          finalValue = isFathomClipContent(rawContent)
-            ? `WATCH FATHOM CLIP: ${rawContent.ops.find(op => op.attributes?.link)?.attributes?.link}` // Texto plano
-            : rawContent.ops.map(op => op.insert).join('').trim(); // Para otros casos, conservamos texto
+          // Si es un Delta, procesamos para encontrar el enlace de Fathom
+          const fathomLink = rawContent.ops.find(op => op.attributes?.link?.includes('fathom.video'))?.attributes?.link;
+          if (fathomLink) {
+            finalValue = `WATCH FATHOM CLIP: ${fathomLink}`;
+            console.log(`📢 Detected Fathom link in Delta: ${finalValue}`);
+          } else {
+            finalValue = rawContent.ops.map(op => op.insert).join('').trim(); // Si no es Fathom, solo texto
+            console.log(`📢 Non-Fathom Delta content: ${finalValue}`);
+          }
         } else {
-          const html = typeof item.after === 'string' ? item.after : item.after?.value || '';
-          const match = html.match(/href="(https:\/\/fathom\.video\/share\/[^"]+)/);
+          // Si es HTML, verificamos el enlace de Fathom
+          const html = typeof rawContent === 'string' ? rawContent : rawContent?.value || '';
+          const match = html.match(/href="(https:\/\/fathom\.video\/share\/[^\"]+)/);
           finalValue = html.includes('WATCH FATHOM CLIP') && match
-            ? `WATCH FATHOM CLIP: ${match[1]}` // Texto plano, Fathom
-            : htmlToQuillDelta(html); // Delta genérico para otros tipos de contenido
+            ? `WATCH FATHOM CLIP: ${match[1]}` // Si contiene Fathom, formateamos a texto plano
+            : htmlToQuillDelta(html); // Para otros casos, procesamos como Quill Delta
+
+          console.log(`📢 HTML content processed: ${finalValue}`);
         }
       } else {
         try {
