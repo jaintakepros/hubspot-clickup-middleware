@@ -172,13 +172,13 @@ async function handleClickupTasks(event) {
 
         } else {
           const html = typeof rawContent === 'string' ? rawContent : rawContent?.value || '';
-          const match = html.match(/href="(https:\/\/fathom\.video\/share\/[^"]+)"/);
+          const $ = cheerio.load(html);
+          const fathomLink = $('a[href*="fathom.video/share"]').attr('href');
 
-          if (html.includes('WATCH FATHOM CLIP') && match) {
-            finalValue = `WATCH FATHOM CLIP: ${match[1]}`;
-            console.log(`📢 Detected Fathom link in HTML: ${finalValue}`);
+          if (html.includes('WATCH FATHOM CLIP') && fathomLink) {
+            finalValue = `WATCH FATHOM CLIP: ${fathomLink}`;
+            console.log(`✅ Fathom link extracted from HTML: ${fathomLink}`);
           } else {
-            const $ = cheerio.load(html);
             finalValue = $.text().trim();
             console.log(`📢 HTML converted to plain text: ${finalValue}`);
           }
