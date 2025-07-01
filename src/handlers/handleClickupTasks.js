@@ -165,14 +165,14 @@ async function handleClickupTasks(event) {
 
         if (isLikelyDelta(rawContent)) {
           finalValue = isFathomClipContent(rawContent)
-            ? deltaToFathomHTML(rawContent)
-            : rawContent.ops.map(op => op.insert).join('').trim(); // ✅ corregido
+            ? `WATCH FATHOM CLIP: ${rawContent.ops.find(op => op.attributes?.link)?.attributes?.link}` // Texto plano
+            : rawContent.ops.map(op => op.insert).join('').trim(); // Para otros casos, conservamos texto
         } else {
           const html = typeof item.after === 'string' ? item.after : item.after?.value || '';
           const match = html.match(/href="(https:\/\/fathom\.video\/share\/[^"]+)/);
           finalValue = html.includes('WATCH FATHOM CLIP') && match
-            ? buildFathomDelta(match[1])
-            : htmlToQuillDelta(html);
+            ? `WATCH FATHOM CLIP: ${match[1]}` // Texto plano, Fathom
+            : htmlToQuillDelta(html); // Delta genérico para otros tipos de contenido
         }
       } else {
         try {
