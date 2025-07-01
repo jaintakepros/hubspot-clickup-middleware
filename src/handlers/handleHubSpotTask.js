@@ -118,7 +118,7 @@ async function handleHubSpotTask(event) {
         if (hsBody.includes('WATCH FATHOM CLIP')) {
           const match = hsBody.match(/href="(https:\/\/fathom\.video\/share\/[^"]+)"/);
           if (match) {
-            description = buildFathomDelta(match[1]); // Delta con link
+            description = `WATCH FATHOM CLIP: ${match[1]}`; // Texto plano con el enlace
           }
         } else {
           description = htmlToQuillDelta(hsBody); // Delta genérico
