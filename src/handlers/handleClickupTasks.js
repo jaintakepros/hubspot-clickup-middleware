@@ -177,6 +177,7 @@ async function handleClickupTasks(event) {
             : htmlToQuillDelta(html); // Para otros casos, procesamos como Quill Delta
 
           console.log(`📢 HTML content processed: ${finalValue}`);
+          console.dir(finalValue, { depth: null, colors: true });
         }
       } else {
         try {
