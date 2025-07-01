@@ -39,6 +39,9 @@ function htmlToQuillDelta(html) {
   return { ops };
 }
 
+function isLikelyDelta(obj) {
+  return obj && typeof obj === 'object' && Array.isArray(obj.ops);
+}
 
 const pendingClickUpSyncs = new Set();
 
@@ -184,9 +187,23 @@ async function handleClickupTasks(event) {
           continue;
         }
       } else if (field === 'content') {
-        const html = typeof item.after === 'string' ? item.after : item.after?.value || '';
-        finalValue = htmlToQuillDelta(html);
-      } else {
+          let rawContent = item.after;
+
+          try {
+            if (typeof rawContent === 'string') {
+              rawContent = JSON.parse(rawContent);
+            }
+          } catch (err) {
+            console.warn(`⚠️ Could not parse content as JSON, assuming HTML.`, err.message);
+          }
+
+          if (isLikelyDelta(rawContent)) {
+            finalValue = rawContent; // ya está en formato válido
+          } else {
+            const html = typeof item.after === 'string' ? item.after : item.after?.value || '';
+            finalValue = htmlToQuillDelta(html);
+          }
+        } else {
         try {
           finalValue = typeof item.after === 'string' ? JSON.parse(item.after) : item.after;
         } catch {
