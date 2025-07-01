@@ -52,6 +52,12 @@ app.post('/webhook/clickup/tasks', async (req, res) => {
   }
 });
 
+// En server.js o tu archivo principal
+app.get('/ping', (req, res) => {
+  res.send('pong');
+});
+
+
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
 });
