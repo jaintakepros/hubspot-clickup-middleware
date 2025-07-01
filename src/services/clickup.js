@@ -1,6 +1,11 @@
 const axios = require('axios');
 const { getPropertyHistory, getTaskPropertyHistory, getHubspotUserById } = require('./hubspot');
 
+const {
+  isLikelyDelta,
+  deltaToFathomHTML
+} = require('../utils/fathomUtils');
+
 function stripHtml(html) {
   return html.replace(/<[^>]*>/g, '').trim();
 }
@@ -381,7 +386,11 @@ async function updateClickUpTaskFromHubspotTask({ hubspotTaskId, clickupTaskId }
         break;
 
       case 'hs_task_body':
-        payload.description = latestValue;
+        if (isLikelyDelta(latestValue)) {
+          payload.description = deltaToFathomHTML(latestValue); // Si es Delta, lo convertimos en HTML
+        } else {
+          payload.description = latestValue; // Texto plano, lo dejamos tal cual
+        }
         break;
 
       case 'hs_timestamp': {
@@ -438,6 +447,7 @@ async function updateClickUpTaskFromHubspotTask({ hubspotTaskId, clickupTaskId }
     return null;
   }
 }
+
 
 
 async function getClickUpTaskDetails(taskId) {
