@@ -203,21 +203,27 @@ async function findHubspotOwnerIdByEmail(email) {
 
 async function updateHubspotTaskField(taskId, propertyName, newValue) {
   try {
-    const url = `https://api.hubapi.com/crm/v3/objects/tasks/${taskId}`;
-    const response = await axios.patch(
-      url,
-      {
-        properties: {
-          [propertyName]: newValue,
-        },
+    // Solo stringify si es el campo de contenido (hs_task_body)
+    if (propertyName === 'hs_task_body' && typeof newValue === 'object') {
+      console.log(`📝 Stringifying hs_task_body before sending to HubSpot:\n`, newValue);
+      newValue = JSON.stringify(newValue);
+    }
+
+    const payload = {
+      properties: {
+        [propertyName]: newValue,
       },
-      {
-        headers: {
-          Authorization: `Bearer ${process.env.HUBSPOT_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-      }
-    );
+    };
+
+    console.log(`🚀 Sending update to HubSpot for task ${taskId}:`, payload);
+
+    const url = `https://api.hubapi.com/crm/v3/objects/tasks/${taskId}`;
+    const response = await axios.patch(url, payload, {
+      headers: {
+        Authorization: `Bearer ${process.env.HUBSPOT_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+    });
 
     console.log(`✅ HubSpot task ${taskId} updated: ${propertyName} = ${newValue}`);
     return response.data;
@@ -226,6 +232,7 @@ async function updateHubspotTaskField(taskId, propertyName, newValue) {
     return null;
   }
 }
+
 
 async function updateHubspotTicketField(ticketId, propertyName, newValue) {
   try {
