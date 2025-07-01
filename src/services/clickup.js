@@ -205,7 +205,7 @@ async function updateClickUpTask({ ticketId, taskId, modifiedProps = null }) {
           break;
 
         case 'hs_task_body':
-          payload.description = stripHtml(latestValue);
+          payload.description = latestValue;
           break;
 
         case 'hs_timestamp':
