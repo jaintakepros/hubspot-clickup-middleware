@@ -381,7 +381,7 @@ async function updateClickUpTaskFromHubspotTask({ hubspotTaskId, clickupTaskId }
         break;
 
       case 'hs_task_body':
-        payload.description = stripHtml(latestValue);
+        payload.description = latestValue;
         break;
 
       case 'hs_timestamp': {
