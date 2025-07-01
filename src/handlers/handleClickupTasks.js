@@ -15,6 +15,14 @@ const {
 const { cleanQuillDelta } = require('../utils/cleanQuillDelta');
 const cheerio = require("cheerio");
 
+const {
+  isLikelyDelta,
+  isFathomClipContent,
+  buildFathomDelta,
+  deltaToFathomHTML
+} = require('../utils/fathomUtils');
+
+
 function htmlToQuillDelta(html) {
   const $ = cheerio.load(html);
   const ops = [];
@@ -39,10 +47,6 @@ function htmlToQuillDelta(html) {
   return { ops };
 }
 
-function isLikelyDelta(obj) {
-  return obj && typeof obj === 'object' && Array.isArray(obj.ops);
-}
-
 function deltaContainsRawHTML(delta) {
   return (
     isLikelyDelta(delta) &&
@@ -50,6 +54,18 @@ function deltaContainsRawHTML(delta) {
     typeof delta.ops[0].insert === 'string' &&
     /<[^>]+>/.test(delta.ops[0].insert)
   );
+}
+
+function buildFathomDelta(url) {
+  return {
+    ops: [
+      {
+        insert: 'WATCH FATHOM CLIP',
+        attributes: { link: url }
+      },
+      { insert: '\n' }
+    ]
+  };
 }
 
 const pendingClickUpSyncs = new Set();
@@ -107,14 +123,14 @@ async function handleClickupTasks(event) {
   const taskId = event.task_id;
   if (!taskId) return;
 
-  console.log(`📅 ClickUp Event Received: ${event.event} (taskId: ${taskId})`);
+  console.log(`\uD83D\uDCC5 ClickUp Event Received: ${event.event} (taskId: ${taskId})`);
 
   if (event.event === 'taskUpdated') {
     let syncedRecord = await findSyncedItemByClickupTaskId(taskId);
 
     if (!syncedRecord) {
       if (pendingClickUpSyncs.has(taskId)) {
-        console.log(`🕒 Already waiting for sync of ClickUp task ${taskId}. Skipping duplicate wait.`);
+        console.log(`\uD83D\uDD52 Already waiting for sync of ClickUp task ${taskId}. Skipping duplicate wait.`);
         return;
       }
 
@@ -137,39 +153,9 @@ async function handleClickupTasks(event) {
     const hubspotType = syncedRecord.hubspot_object_type;
     const hubspotId = syncedRecord.hubspot_object_id;
     const mapping = FIELD_MAPPING[hubspotType];
-    console.log(event);
 
     for (const item of history) {
-      console.log(`🧾 Change detected – field: ${item.field}`);
-      if (item.before) console.log(`   🔙 before:`, item.before);
-      if (item.after) console.log(`   🔜 after:`, item.after);
-
       const field = item.field || 'unknown';
-
-      if (field === 'assignee_rem') {
-        console.log(`ℹ️ Skipping assignee removal event for task ${taskId}`);
-        continue;
-      }
-
-      if (field === 'assignee_add') {
-        const userObj = item.after || {};
-        const email = userObj?.email;
-
-        if (email) {
-          const hubspotOwnerId = await findHubspotOwnerIdByEmail(email);
-          if (hubspotOwnerId) {
-            const property = mapping.assignees;
-            if (hubspotType === 'task') {
-              await updateHubspotTaskField(hubspotId, property, hubspotOwnerId);
-            } else {
-              await updateHubspotTicketField(hubspotId, property, hubspotOwnerId);
-            }
-            console.log(`✅ Synced ${property} for ${hubspotType} (${taskId})`);
-          }
-        }
-        continue;
-      }
-
       const hubspotProperty = mapping?.[field];
       if (!hubspotProperty) continue;
 
@@ -179,64 +165,40 @@ async function handleClickupTasks(event) {
         const statusStr = (item.after?.status || '').toString().toLowerCase();
         finalValue = STATUS_MAP[hubspotType]?.(statusStr);
       } else if (field === 'priority') {
-        const beforePriority = item.before?.priority?.toLowerCase();
         const afterPriority = item.after?.priority?.toLowerCase();
-
-        if (beforePriority === afterPriority) {
-          console.log(`⏭️ Skipping priority update – no actual change (${afterPriority})`);
-          continue;
-        }
-
-        const rawPriority = afterPriority;
-
-        if (rawPriority && typeof rawPriority === 'string') {
-          finalValue = PRIORITY_MAP[hubspotType]?.[rawPriority] || null;
-        } else {
-          console.warn(`⚠️ Could not extract valid priority from:`, item.after);
-          continue;
-        }
+        finalValue = PRIORITY_MAP[hubspotType]?.[afterPriority] || null;
       } else if (field === 'content') {
-          let rawContent = item.after;
+        let rawContent = item.after;
+        try {
+          if (typeof rawContent === 'string') rawContent = JSON.parse(rawContent);
+        } catch (err) {
+          console.warn(`⚠️ Could not parse content as JSON. Assuming HTML.`, err.message);
+        }
 
-          try {
-            if (typeof rawContent === 'string') {
-              rawContent = JSON.parse(rawContent);
-            }
-          } catch (err) {
-            console.warn(`⚠️ Could not parse content as JSON, assuming HTML.`, err.message);
-          }
-
-          if (isLikelyDelta(rawContent)) {
-            if (deltaContainsRawHTML(rawContent)) {
-              console.warn(`⚠️ Delta contains raw HTML inside insert. Converting properly.`);
-              finalValue = htmlToQuillDelta(rawContent.ops[0].insert);
-            } else {
-              finalValue = rawContent;
-            }
-          } else {
-            const html = typeof item.after === 'string' ? item.after : item.after?.value || '';
-            finalValue = htmlToQuillDelta(html);
-          }
+        if (isLikelyDelta(rawContent)) {
+          finalValue = isFathomClipContent(rawContent)
+            ? deltaToFathomHTML(rawContent)
+            : rawContent;
         } else {
+          const html = typeof item.after === 'string' ? item.after : item.after?.value || '';
+          const match = html.match(/href=\"(https:\/\/fathom\.video\/share\/[^\"]+)/);
+          finalValue = html.includes('WATCH FATHOM CLIP') && match
+            ? buildFathomDelta(match[1])
+            : htmlToQuillDelta(html);
+        }
+      } else {
         try {
           finalValue = typeof item.after === 'string' ? JSON.parse(item.after) : item.after;
         } catch {
           finalValue = item.after;
         }
 
-        if (
-          typeof finalValue === 'object' &&
-          !Array.isArray(finalValue) &&
-          finalValue !== null
-        ) {
+        if (typeof finalValue === 'object' && !Array.isArray(finalValue) && finalValue !== null) {
           finalValue = finalValue.value || JSON.stringify(finalValue);
         }
       }
 
-      const isValidType =
-        typeof finalValue === 'string' ||
-        (typeof finalValue === 'number' && !isNaN(finalValue));
-
+      const isValidType = typeof finalValue === 'string' || typeof finalValue === 'number' || isLikelyDelta(finalValue);
       if (!isValidType) {
         console.warn(`⚠️ Skipping ${hubspotProperty}: invalid value`, finalValue);
         continue;
@@ -254,7 +216,6 @@ async function handleClickupTasks(event) {
     return;
   }
 
-  // taskCreated
   const alreadySynced = await isClickupTaskAlreadySynced(taskId);
   if (alreadySynced) {
     console.log(`⛔ ClickUp task ${taskId} is already synced. Skipping.`);
@@ -271,7 +232,6 @@ async function handleClickupTasks(event) {
   }
 
   const space = await getClickUpSpaceDetails(task.space?.id);
-  console.log(space);
   const spaceName = space?.name;
   const companyId = await findCompanyIdByName(spaceName);
   const finalCompanyId = companyId || '35461787401';
