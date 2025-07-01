@@ -13,6 +13,32 @@ const {
 } = require('../db/syncedItems');
 
 const { cleanQuillDelta } = require('../utils/cleanQuillDelta');
+const cheerio = require("cheerio");
+
+function htmlToQuillDelta(html) {
+  const $ = cheerio.load(html);
+  const ops = [];
+
+  function walk(node) {
+    if (node.type === "text") {
+      ops.push({ insert: node.data });
+    } else if (node.name === "a") {
+      const text = $(node).text();
+      const href = $(node).attr("href");
+      ops.push({
+        insert: text,
+        attributes: { link: href }
+      });
+    } else if (node.children) {
+      node.children.forEach(walk);
+    }
+  }
+
+  $("body").contents().each((_, el) => walk(el));
+  ops.push({ insert: "\n" });
+  return { ops };
+}
+
 
 const pendingClickUpSyncs = new Set();
 
@@ -158,7 +184,7 @@ async function handleClickupTasks(event) {
           continue;
         }
       } else if (field === 'content') {
-        finalValue = item.after;
+        finalValue = htmlToQuillDelta(item.after);
       } else {
         try {
           finalValue = typeof item.after === 'string' ? JSON.parse(item.after) : item.after;
