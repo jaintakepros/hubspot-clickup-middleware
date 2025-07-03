@@ -1,68 +1,14 @@
-const { getClickUpTaskDetails, getClickUpSpaceDetails } = require('../services/clickup');
 const {
-  findCompanyIdByName,
-  createHubspotTask,
-  findHubspotOwnerIdByEmail,
   updateHubspotTaskField,
   updateHubspotTicketField
 } = require('../services/hubspot');
 const {
-  saveSyncedItem,
-  isClickupTaskAlreadySynced,
   findSyncedItemByClickupTaskId
 } = require('../db/syncedItems');
-
-const { cleanQuillDelta } = require('../utils/cleanQuillDelta');
 const cheerio = require("cheerio");
-
 const {
-  isLikelyDelta,
-  isFathomClipContent,
-  buildFathomDelta,
-  deltaToFathomHTML
+  isLikelyDelta
 } = require('../utils/fathomUtils');
-
-
-function htmlToQuillDelta(html) {
-  const $ = cheerio.load(html);
-  const ops = [];
-
-  function walk(node) {
-    if (node.type === "text") {
-      ops.push({ insert: node.data });
-    } else if (node.name === "a") {
-      const text = $(node).text();
-      const href = $(node).attr("href");
-      ops.push({
-        insert: text,
-        attributes: { link: href }
-      });
-    } else if (node.children) {
-      node.children.forEach(walk);
-    }
-  }
-
-  $("body").contents().each((_, el) => walk(el));
-  ops.push({ insert: "\n" });
-  return { ops };
-}
-
-function deltaContainsRawHTML(delta) {
-  return (
-    isLikelyDelta(delta) &&
-    delta.ops.length === 1 &&
-    typeof delta.ops[0].insert === 'string' &&
-    /<[^>]+>/.test(delta.ops[0].insert)
-  );
-}
-
-const pendingClickUpSyncs = new Set();
-
-function getOneWeekFromNowISO() {
-  const date = new Date();
-  date.setDate(date.getDate() + 7);
-  return date.toISOString();
-}
 
 const PRIORITY_MAP = {
   task: {
@@ -83,8 +29,7 @@ const STATUS_MAP = {
   task: status => (status === 'complete' ? 'COMPLETED' : 'NOT_STARTED'),
   ticket: status => {
     if (status === 'complete') return '4'; // Closed
-    if (status === 'not started') return '1'; // New
-    return '3'; // Waiting on us
+    return '1'; // New
   }
 };
 
@@ -111,30 +56,14 @@ async function handleClickupTasks(event) {
   const taskId = event.task_id;
   if (!taskId) return;
 
-  console.log(`\uD83D\uDCC5 ClickUp Event Received: ${event.event} (taskId: ${taskId})`);
+  console.log(`📅 ClickUp Event Received: ${event.event} (taskId: ${taskId})`);
 
   if (event.event === 'taskUpdated') {
-    let syncedRecord = await findSyncedItemByClickupTaskId(taskId);
+    const syncedRecord = await findSyncedItemByClickupTaskId(taskId);
 
     if (!syncedRecord) {
-      if (pendingClickUpSyncs.has(taskId)) {
-        console.log(`\uD83D\uDD52 Already waiting for sync of ClickUp task ${taskId}. Skipping duplicate wait.`);
-        return;
-      }
-
-      console.log(`⏳ Task ${taskId} not yet synced. Waiting 30s before retry.`);
-      pendingClickUpSyncs.add(taskId);
-      await new Promise(resolve => setTimeout(resolve, 30000));
-      pendingClickUpSyncs.delete(taskId);
-
-      syncedRecord = await findSyncedItemByClickupTaskId(taskId);
-
-      if (!syncedRecord) {
-        console.log(`🔁 Still not found after 30s. Creating new task in HubSpot.`);
-        return await handleClickupTasks({ ...event, event: 'taskCreated' });
-      } else {
-        console.log(`✅ Task ${taskId} got synced during wait. Proceeding with update.`);
-      }
+      console.log(`⛔ Task ${taskId} not synced with HubSpot. Skipping update.`);
+      return;
     }
 
     const history = event.history_items || [];
@@ -176,14 +105,12 @@ async function handleClickupTasks(event) {
           const html = typeof rawContent === 'string' ? rawContent : rawContent?.value || '';
 
           try {
-            // Intentamos parsear como Delta serializado (stringified)
             const parsed = JSON.parse(html);
             if (parsed?.ops?.length) {
               const fathomOp = parsed.ops.find(op => op.attributes?.link?.includes('fathom.video'));
               fathomLink = fathomOp?.attributes?.link;
             }
           } catch (err) {
-            // Si no es JSON, lo tratamos como HTML real
             const $ = cheerio.load(html);
             fathomLink = $('a[href*="fathom.video/share"]').attr('href');
           }
@@ -222,6 +149,9 @@ async function handleClickupTasks(event) {
         continue;
       }
 
+      // 🔍 NUEVO LOG DE ACTUALIZACIÓN
+      console.log(`🔄 Updating HubSpot ${hubspotType} (${hubspotId}) field "${hubspotProperty}" with value:`, finalValue, `(from ClickUp task ${taskId})`);
+
       if (hubspotType === 'task') {
         await updateHubspotTaskField(hubspotId, hubspotProperty, finalValue);
       } else {
@@ -230,61 +160,6 @@ async function handleClickupTasks(event) {
 
       console.log(`✅ Synced ${hubspotProperty} for ${hubspotType} (${taskId})`);
     }
-
-    return;
-  }
-
-  const alreadySynced = await isClickupTaskAlreadySynced(taskId);
-  if (alreadySynced) {
-    console.log(`⛔ ClickUp task ${taskId} is already synced. Skipping.`);
-    return;
-  }
-
-  const task = await getClickUpTaskDetails(taskId);
-  if (!task) return;
-
-  const listName = task.list?.name || '';
-  if (!listName.includes('Support Ticket Form')) {
-    console.log(`⏭️ Ignored task: not in a valid list (${listName})`);
-    return;
-  }
-
-  const space = await getClickUpSpaceDetails(task.space?.id);
-  const spaceName = space?.name;
-  const companyId = await findCompanyIdByName(spaceName);
-  const finalCompanyId = companyId || '35461787401';
-
-  const dueDateISO = task.due_date
-    ? new Date(Number(task.due_date)).toISOString()
-    : getOneWeekFromNowISO();
-
-  const priorityValue = task.priority?.priority || null;
-  const hubspotPriority = priorityValue
-    ? PRIORITY_MAP.task[priorityValue.toLowerCase()]
-    : undefined;
-
-  const assignee = task.assignees?.[0];
-  let hubspotOwnerId = null;
-
-  if (assignee?.email) {
-    hubspotOwnerId = await findHubspotOwnerIdByEmail(assignee.email);
-  }
-
-  const hubspotTask = await createHubspotTask({
-    name: task.name,
-    description: task.description || '',
-    dueDate: dueDateISO,
-    ownerId: hubspotOwnerId,
-    companyId: finalCompanyId,
-    priority: hubspotPriority
-  });
-
-  if (hubspotTask?.id) {
-    await saveSyncedItem({
-      hubspotObjectId: hubspotTask.id,
-      hubspotObjectType: 'task',
-      clickupTaskId: taskId
-    });
   }
 }
 
