@@ -170,7 +170,7 @@ async function handleHubSpotTask(event) {
       // 🔗 Actualizar custom field con URL de HubSpot
       const customFieldId = '939589ca-d9c5-483e-baab-a2b30d008672';
       //const hubspotRecordUrl = `https://app.hubspot.com/contacts/46493300/record/0-2/${companyId}`;
-      const hubspotRecordUrl = `https://app.hubspot.com/contacts/46493300/company/${companyId}}/?engagement=${taskId}`;
+      const hubspotRecordUrl = `https://app.hubspot.com/contacts/46493300/company/${companyId}/?engagement=${taskId}`;
 
       try {
         await axios.post(
