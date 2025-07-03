@@ -9,6 +9,7 @@ const {
   saveSyncedItem,
   findSyncedItem
 } = require('../db/syncedItems');
+const axios = require('axios');
 
 const processingEvents = new Set();
 const pendingSyncs = new Set(); // ✅ Previene loops de creación
@@ -93,7 +94,8 @@ async function handleHubSpotTicket(payload) {
                 ticket,
                 company,
                 listId: list.id,
-                space
+                space,
+                tags: ['Ticket'] // ✅ Añadir etiqueta
               });
 
               if (clickupTaskId) {
@@ -103,6 +105,25 @@ async function handleHubSpotTicket(payload) {
                   clickupTaskId: clickupTaskId,
                 });
                 console.log(`✅ Sync record saved for ticket ${ticket.id}`);
+
+                // ✅ Actualizar custom field con URL
+                const customFieldId = '939589ca-d9c5-483e-baab-a2b30d008672';
+                const hubspotRecordUrl = `https://app.hubspot.com/contacts/46493300/record/0-5/${ticketId}`;
+                try {
+                  await axios.put(
+                    `https://api.clickup.com/api/v2/task/${clickupTaskId}/field/${customFieldId}`,
+                    { value: hubspotRecordUrl },
+                    {
+                      headers: {
+                        Authorization: process.env.CLICKUP_API_KEY,
+                        'Content-Type': 'application/json',
+                      }
+                    }
+                  );
+                  console.log(`🔗 Custom field actualizado: ${hubspotRecordUrl}`);
+                } catch (error) {
+                  console.error(`❌ Error al actualizar custom field HubSpot Record URL:`, error.message);
+                }
               } else {
                 console.warn(`⚠️ ClickUp task not created successfully for ticket ${ticket.id}`);
               }
@@ -122,7 +143,8 @@ async function handleHubSpotTicket(payload) {
         ticket,
         company,
         listId: list.id,
-        space
+        space,
+        tags: ['Ticket'] // ✅ Añadir etiqueta
       });
 
       if (clickupTaskId) {
@@ -132,6 +154,25 @@ async function handleHubSpotTicket(payload) {
           clickupTaskId: clickupTaskId,
         });
         console.log(`✅ Sync record saved for ticket ${ticket.id}`);
+
+        // ✅ Actualizar custom field con URL
+        const customFieldId = '939589ca-d9c5-483e-baab-a2b30d008672';
+        const hubspotRecordUrl = `https://app.hubspot.com/contacts/46493300/record/0-5/${ticketId}`;
+        try {
+          await axios.put(
+            `https://api.clickup.com/api/v2/task/${clickupTaskId}/field/${customFieldId}`,
+            { value: hubspotRecordUrl },
+            {
+              headers: {
+                Authorization: process.env.CLICKUP_API_KEY,
+                'Content-Type': 'application/json',
+              }
+            }
+          );
+          console.log(`🔗 Custom field actualizado: ${hubspotRecordUrl}`);
+        } catch (error) {
+          console.error(`❌ Error al actualizar custom field HubSpot Record URL:`, error.message);
+        }
       } else {
         console.warn(`⚠️ ClickUp task was not created successfully for ticket ${ticket.id}`);
       }

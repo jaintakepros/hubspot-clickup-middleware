@@ -110,9 +110,10 @@ async function handleHubSpotTask(event) {
         ? new Date(task.properties.hs_timestamp).getTime()
         : undefined;
 
-      // Descripción (manejo especial para Fathom)
+      // Descripción (manejo especial para Fathom) y tags
       let description = 'No description';
       const hsBody = task.properties.hs_task_body;
+      const tags = [];
       console.log('📦 hs_task_body (raw):', hsBody);
 
       if (hsBody && typeof hsBody === 'string') {
@@ -127,6 +128,7 @@ async function handleHubSpotTask(event) {
                 { insert: `WATCH FATHOM CLIP: ${match[0]}\n` }
               ]
             };
+            tags.push('Fathom');
           } else {
             console.warn('⚠️ WATCH FATHOM CLIP found but no URL matched');
           }
@@ -145,6 +147,7 @@ async function handleHubSpotTask(event) {
         priority: task.properties.hs_task_priority === 'HIGH' ? 2 :
                   task.properties.hs_task_priority === 'LOW' ? 4 : 3,
         status: task.properties.hs_task_status === 'COMPLETED' ? 'complete' : 'not started',
+        tags,
       };
 
       const response = await axios.post(`https://api.clickup.com/api/v2/list/${listId}/task`, taskData, {
@@ -163,6 +166,26 @@ async function handleHubSpotTask(event) {
       });
 
       console.log(`💾 Sync saved for HubSpot task ${taskId}`);
+
+      // 🔗 Actualizar custom field con URL de HubSpot
+      const customFieldId = '939589ca-d9c5-483e-baab-a2b30d008672';
+      const hubspotRecordUrl = `https://app.hubspot.com/contacts/46493300/record/0-2/${companyId}`;
+
+      try {
+        await axios.put(
+          `https://api.clickup.com/api/v2/task/${response.data.id}/field/${customFieldId}`,
+          { value: hubspotRecordUrl },
+          {
+            headers: {
+              Authorization: process.env.CLICKUP_API_KEY,
+              'Content-Type': 'application/json',
+            }
+          }
+        );
+        console.log(`🔗 Custom field actualizado: ${hubspotRecordUrl}`);
+      } catch (error) {
+        console.error(`❌ Error al actualizar custom field HubSpot Record URL:`, error.message);
+      }
 
     } else if (eventType === 'object.propertyChange') {
       const synced = await findSyncedItem({
@@ -222,5 +245,3 @@ async function handleHubSpotTask(event) {
 module.exports = {
   handleHubSpotTask,
 };
-
-
