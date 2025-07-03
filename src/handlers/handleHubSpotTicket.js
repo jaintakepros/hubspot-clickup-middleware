@@ -135,7 +135,7 @@ async function handleHubSpotTicket(payload) {
                     },
                     {
                       headers: {
-                        Authorization: `Bearer ${process.env.HUBSPOT_PRIVATE_APP_TOKEN}`,
+                        Authorization: `Bearer ${process.env.HUBSPOT_API_KEY}`,
                         'Content-Type': 'application/json'
                       }
                     }
@@ -204,7 +204,7 @@ async function handleHubSpotTicket(payload) {
             },
             {
               headers: {
-                Authorization: `Bearer ${process.env.HUBSPOT_PRIVATE_APP_TOKEN}`,
+                Authorization: `Bearer ${process.env.HUBSPOT_API_KEY}`,
                 'Content-Type': 'application/json'
               }
             }
