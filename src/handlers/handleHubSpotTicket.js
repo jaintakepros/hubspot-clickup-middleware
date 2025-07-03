@@ -95,7 +95,7 @@ async function handleHubSpotTicket(payload) {
                 company,
                 listId: list.id,
                 space,
-                tags: ['Ticket'] // ✅ Añadir etiqueta
+                tags: ['ticket'] // ✅ Añadir etiqueta
               });
 
               if (clickupTaskId) {
