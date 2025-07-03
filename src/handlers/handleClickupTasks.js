@@ -149,7 +149,6 @@ async function handleClickupTasks(event) {
         continue;
       }
 
-      // 🔍 NUEVO LOG DE ACTUALIZACIÓN
       console.log(`🔄 Updating HubSpot ${hubspotType} (${hubspotId}) field "${hubspotProperty}" with value:`, finalValue, `(from ClickUp task ${taskId})`);
 
       if (hubspotType === 'task') {
