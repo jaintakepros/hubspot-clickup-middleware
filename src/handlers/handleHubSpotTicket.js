@@ -95,7 +95,7 @@ async function handleHubSpotTicket(payload) {
                 company,
                 listId: list.id,
                 space,
-                tags: ['ticket'] // ✅ Añadir etiqueta
+                tags: ['ticket']
               });
 
               if (clickupTaskId) {
@@ -106,7 +106,6 @@ async function handleHubSpotTicket(payload) {
                 });
                 console.log(`✅ Sync record saved for ticket ${ticket.id}`);
 
-                // ✅ Actualizar custom field con URL
                 const customFieldId = '939589ca-d9c5-483e-baab-a2b30d008672';
                 const hubspotRecordUrl = `https://app.hubspot.com/contacts/46493300/record/0-5/${ticketId}`;
                 try {
@@ -123,6 +122,27 @@ async function handleHubSpotTicket(payload) {
                   console.log(`🔗 Custom field actualizado: ${hubspotRecordUrl}`);
                 } catch (error) {
                   console.error(`❌ Error al actualizar custom field HubSpot Record URL:`, error.message);
+                }
+
+                const clickupTaskUrl = `https://app.clickup.com/t/${clickupTaskId}`;
+                try {
+                  await axios.patch(
+                    `https://api.hubapi.com/crm/v3/objects/tickets/${ticketId}`,
+                    {
+                      properties: {
+                        clickup_task_url: clickupTaskUrl
+                      }
+                    },
+                    {
+                      headers: {
+                        Authorization: `Bearer ${process.env.HUBSPOT_PRIVATE_APP_TOKEN}`,
+                        'Content-Type': 'application/json'
+                      }
+                    }
+                  );
+                  console.log(`🔗 Campo 'clickup_task_url' actualizado en HubSpot: ${clickupTaskUrl}`);
+                } catch (error) {
+                  console.error(`❌ Error al actualizar campo 'clickup_task_url' en HubSpot:`, error.message);
                 }
               } else {
                 console.warn(`⚠️ ClickUp task not created successfully for ticket ${ticket.id}`);
@@ -144,7 +164,7 @@ async function handleHubSpotTicket(payload) {
         company,
         listId: list.id,
         space,
-        tags: ['Ticket'] // ✅ Añadir etiqueta
+        tags: ['ticket']
       });
 
       if (clickupTaskId) {
@@ -155,7 +175,6 @@ async function handleHubSpotTicket(payload) {
         });
         console.log(`✅ Sync record saved for ticket ${ticket.id}`);
 
-        // ✅ Actualizar custom field con URL
         const customFieldId = '939589ca-d9c5-483e-baab-a2b30d008672';
         const hubspotRecordUrl = `https://app.hubspot.com/contacts/46493300/record/0-5/${ticketId}`;
         try {
@@ -172,6 +191,27 @@ async function handleHubSpotTicket(payload) {
           console.log(`🔗 Custom field actualizado: ${hubspotRecordUrl}`);
         } catch (error) {
           console.error(`❌ Error al actualizar custom field HubSpot Record URL:`, error.message);
+        }
+
+        const clickupTaskUrl = `https://app.clickup.com/t/${clickupTaskId}`;
+        try {
+          await axios.patch(
+            `https://api.hubapi.com/crm/v3/objects/tickets/${ticketId}`,
+            {
+              properties: {
+                clickup_task_url: clickupTaskUrl
+              }
+            },
+            {
+              headers: {
+                Authorization: `Bearer ${process.env.HUBSPOT_PRIVATE_APP_TOKEN}`,
+                'Content-Type': 'application/json'
+              }
+            }
+          );
+          console.log(`🔗 Campo 'clickup_task_url' actualizado en HubSpot: ${clickupTaskUrl}`);
+        } catch (error) {
+          console.error(`❌ Error al actualizar campo 'clickup_task_url' en HubSpot:`, error.message);
         }
       } else {
         console.warn(`⚠️ ClickUp task was not created successfully for ticket ${ticket.id}`);
