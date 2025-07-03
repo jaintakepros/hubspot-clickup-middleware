@@ -66,6 +66,8 @@ async function handleClickupTasks(event) {
       return;
     }
 
+    console.log(event);
+
     const history = event.history_items || [];
     const hubspotType = syncedRecord.hubspot_object_type;
     const hubspotId = syncedRecord.hubspot_object_id;
