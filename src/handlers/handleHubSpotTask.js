@@ -172,7 +172,7 @@ async function handleHubSpotTask(event) {
       const hubspotRecordUrl = `https://app.hubspot.com/contacts/46493300/record/0-2/${companyId}`;
 
       try {
-        await axios.put(
+        await axios.post(
           `https://api.clickup.com/api/v2/task/${response.data.id}/field/${customFieldId}`,
           { value: hubspotRecordUrl },
           {
