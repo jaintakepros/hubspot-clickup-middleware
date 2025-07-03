@@ -213,12 +213,14 @@ async function updateClickUpTask({ ticketId, taskId, modifiedProps = null }) {
           payload.description = latestValue;
           break;
 
+        /*  
         case 'hs_timestamp':
           if (value) {
             const dueTimestamp = new Date(value).getTime();
             payload.due_date = dueTimestamp;
           }
           break;
+        */
 
         case 'hubspot_owner_id': {
           try {
@@ -393,11 +395,14 @@ async function updateClickUpTaskFromHubspotTask({ hubspotTaskId, clickupTaskId }
         }
         break;
 
+
+      /*
       case 'hs_timestamp': {
         const timestamp = latestValue ? new Date(latestValue).getTime() : null;
         if (timestamp) payload.due_date = timestamp;
         break;
       }
+      */
 
       case 'hubspot_owner_id': {
         try {
