@@ -313,11 +313,11 @@ async function updateClickUpTask({ ticketId, taskId, modifiedProps = null }) {
 
             const currentRes = await axios.get(url, { headers });
             const currentIds = currentRes.data.assignees.map(a => a.id);
-            const idsToRemove = currentIds.filter(id => id !== clickupUserId);
+            //const idsToRemove = currentIds.filter(id => id !== clickupUserId);
 
             payload.assignees = {
               add: [clickupUserId],
-              rem: idsToRemove,
+              //rem: idsToRemove,
             };
           } catch (err) {
             console.error(`❌ Error syncing assignee:`, err.response?.data || err.message);
@@ -409,11 +409,11 @@ async function updateClickUpTaskFromHubspotTask({ hubspotTaskId, clickupTaskId }
 
           const currentRes = await axios.get(url, { headers });
           const currentIds = currentRes.data.assignees.map(a => a.id);
-          const idsToRemove = currentIds.filter(id => id !== clickupUserId);
+          //const idsToRemove = currentIds.filter(id => id !== clickupUserId);
 
           payload.assignees = {
             add: [clickupUserId],
-            rem: idsToRemove,
+            //rem: idsToRemove,
           };
         } catch (err) {
           console.error(`❌ Error syncing assignee:`, err.response?.data || err.message);
