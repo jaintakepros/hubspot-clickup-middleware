@@ -1,6 +1,7 @@
 const {
   updateHubspotTaskField,
-  updateHubspotTicketField
+  updateHubspotTicketField,
+  findHubspotOwnerIdByEmail
 } = require('../services/hubspot');
 const {
   findSyncedItemByClickupTaskId
@@ -66,8 +67,6 @@ async function handleClickupTasks(event) {
       return;
     }
 
-    console.log(event);
-
     const history = event.history_items || [];
     const hubspotType = syncedRecord.hubspot_object_type;
     const hubspotId = syncedRecord.hubspot_object_id;
@@ -75,6 +74,29 @@ async function handleClickupTasks(event) {
 
     for (const item of history) {
       const field = item.field || 'unknown';
+
+      // Manejo especial para reassignment de owner
+      if (field === 'assignee_add' && item.after?.email) {
+        const email = item.after.email;
+        const hubspotOwnerId = await findHubspotOwnerIdByEmail(email);
+
+        if (!hubspotOwnerId) {
+          console.warn(`⚠️ Could not find HubSpot owner for email: ${email}`);
+          continue;
+        }
+
+        console.log(`🔄 Reassigning HubSpot ${hubspotType} (${hubspotId}) to user ${email} → ownerId ${hubspotOwnerId} (from ClickUp task ${taskId})`);
+
+        if (hubspotType === 'task') {
+          await updateHubspotTaskField(hubspotId, 'hubspot_owner_id', hubspotOwnerId);
+        } else {
+          await updateHubspotTicketField(hubspotId, 'hubspot_owner_id', hubspotOwnerId);
+        }
+
+        console.log(`✅ Reassigned owner for ${hubspotType} (${taskId})`);
+        continue;
+      }
+
       const hubspotProperty = mapping?.[field];
       if (!hubspotProperty) continue;
 
