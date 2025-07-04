@@ -81,7 +81,6 @@ async function handleHubSpotTask(event) {
         return;
       }
 
-      // Compañía asociada
       const companyId = task?.associations?.companies?.results?.[0]?.id || '35461787401';
       const company = await getCompanyById(companyId);
       const companyName = company?.properties?.name || 'Generic Company';
@@ -95,7 +94,6 @@ async function handleHubSpotTask(event) {
         return;
       }
 
-      // Asignado
       let assignees = [];
       try {
         const hubspotUser = await getHubspotUserById(task.properties.hubspot_owner_id);
@@ -105,15 +103,14 @@ async function handleHubSpotTask(event) {
         }
       } catch (e) {}
 
-      // Fecha
       const dueDate = task.properties?.hs_timestamp
         ? new Date(task.properties.hs_timestamp).getTime()
         : undefined;
 
-      // Descripción (manejo especial para Fathom) y tags
       let description = 'No description';
       const hsBody = task.properties.hs_task_body;
       const tags = [];
+      let fathomUrl = null;
       console.log('📦 hs_task_body (raw):', hsBody);
 
       if (hsBody && typeof hsBody === 'string') {
@@ -129,12 +126,12 @@ async function handleHubSpotTask(event) {
               ]
             };
             tags.push('Fathom');
+            fathomUrl = match[0];
           } else {
             console.warn('⚠️ WATCH FATHOM CLIP found but no URL matched');
           }
 
         } else {
-          // Delta genérico desde HTML
           description = htmlToQuillDelta(hsBody);
         }
       }
@@ -167,14 +164,13 @@ async function handleHubSpotTask(event) {
 
       console.log(`💾 Sync saved for HubSpot task ${taskId}`);
 
-      // 🔗 Actualizar custom field con URL de HubSpot
-      const customFieldId = '939589ca-d9c5-483e-baab-a2b30d008672';
-      //const hubspotRecordUrl = `https://app.hubspot.com/contacts/46493300/record/0-2/${companyId}`;
+      // 🔗 Actualizar custom field HubSpot URL
+      const clickupHubSpotRecordId = '939589ca-d9c5-483e-baab-a2b30d008672';
       const hubspotRecordUrl = `https://app.hubspot.com/contacts/46493300/company/${companyId}/?engagement=${taskId}`;
 
       try {
         await axios.post(
-          `https://api.clickup.com/api/v2/task/${response.data.id}/field/${customFieldId}`,
+          `https://api.clickup.com/api/v2/task/${response.data.id}/field/${clickupHubSpotRecordId}`,
           { value: hubspotRecordUrl },
           {
             headers: {
@@ -186,6 +182,26 @@ async function handleHubSpotTask(event) {
         console.log(`🔗 Custom field actualizado: ${hubspotRecordUrl}`);
       } catch (error) {
         console.error(`❌ Error al actualizar custom field HubSpot Record URL:`, error.message);
+      }
+
+      // 🔗 Actualizar custom field fathomUrl si se detectó
+      if (fathomUrl) {
+        const fathomUrlFieldId = 'f9fe2f36-7969-4dfa-891b-78e55511563a';
+        try {
+          await axios.post(
+            `https://api.clickup.com/api/v2/task/${response.data.id}/field/${fathomUrlFieldId}`,
+            { value: fathomUrl },
+            {
+              headers: {
+                Authorization: process.env.CLICKUP_API_KEY,
+                'Content-Type': 'application/json',
+              }
+            }
+          );
+          console.log(`🔗 Custom field fathomUrl actualizado: ${fathomUrl}`);
+        } catch (error) {
+          console.error(`❌ Error al actualizar custom field fathomUrl:`, error.message);
+        }
       }
 
     } else if (eventType === 'object.propertyChange') {
@@ -228,7 +244,6 @@ async function handleHubSpotTask(event) {
         return;
       }
 
-      // Actualizar ClickUp si ya estaba sincronizado
       await updateClickUpTaskFromHubspotTask({
         hubspotTaskId: taskId,
         clickupTaskId: synced.clickup_task_id,
@@ -246,3 +261,4 @@ async function handleHubSpotTask(event) {
 module.exports = {
   handleHubSpotTask,
 };
+

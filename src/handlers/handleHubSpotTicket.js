@@ -106,11 +106,11 @@ async function handleHubSpotTicket(payload) {
                 });
                 console.log(`✅ Sync record saved for ticket ${ticket.id}`);
 
-                const customFieldId = '939589ca-d9c5-483e-baab-a2b30d008672';
+                const clickupHubSpotRecordId = '939589ca-d9c5-483e-baab-a2b30d008672';
                 const hubspotRecordUrl = `https://app.hubspot.com/contacts/46493300/record/0-5/${ticketId}`;
                 try {
                   await axios.post(
-                    `https://api.clickup.com/api/v2/task/${clickupTaskId}/field/${customFieldId}`,
+                    `https://api.clickup.com/api/v2/task/${clickupTaskId}/field/${clickupHubSpotRecordId}`,
                     { value: hubspotRecordUrl },
                     {
                       headers: {
@@ -175,11 +175,11 @@ async function handleHubSpotTicket(payload) {
         });
         console.log(`✅ Sync record saved for ticket ${ticket.id}`);
 
-        const customFieldId = '939589ca-d9c5-483e-baab-a2b30d008672';
+        const clickupHubSpotRecordId = '939589ca-d9c5-483e-baab-a2b30d008672';
         const hubspotRecordUrl = `https://app.hubspot.com/contacts/46493300/record/0-5/${ticketId}`;
         try {
           await axios.post(
-            `https://api.clickup.com/api/v2/task/${clickupTaskId}/field/${customFieldId}`,
+            `https://api.clickup.com/api/v2/task/${clickupTaskId}/field/${clickupHubSpotRecordId}`,
             { value: hubspotRecordUrl },
             {
               headers: {
