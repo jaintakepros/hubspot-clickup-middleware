@@ -140,7 +140,7 @@ async function findClickUpUserByEmail(email) {
   }
 }
 
-async function createClickUpTask({ listId, ticket, company }) {
+async function createClickUpTask({ listId, ticket, tags = [] }) {
   const url = `https://api.clickup.com/api/v2/list/${listId}/task`;
 
   let assignees = [];
@@ -171,7 +171,8 @@ async function createClickUpTask({ listId, ticket, company }) {
     due_date: dueDate,
     assignees,
     priority: mapPriority(ticket.properties.hs_ticket_priority),
-    ...(mapStatus(ticket) && { status: mapStatus(ticket) }), // 👈 solo si hay valor
+    ...(mapStatus(ticket) && { status: mapStatus(ticket) }),
+    tags,
   };
 
   try {
@@ -191,6 +192,7 @@ async function createClickUpTask({ listId, ticket, company }) {
     return null;
   }
 }
+
 
 async function updateClickUpTask({ ticketId, taskId, modifiedProps = null }) {
   const url = `https://api.clickup.com/api/v2/task/${taskId}`;

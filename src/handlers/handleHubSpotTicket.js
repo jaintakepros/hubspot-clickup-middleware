@@ -91,10 +91,8 @@ async function handleHubSpotTicket(payload) {
               console.log(`📌 Ticket ${ticketId} still not synced. Proceeding to creation...`);
 
               const clickupTaskId = await createClickUpTask({
-                ticket,
-                company,
                 listId: list.id,
-                space,
+                ticket,
                 tags: ['ticket']
               });
 
@@ -160,10 +158,8 @@ async function handleHubSpotTicket(payload) {
       }
 
       const clickupTaskId = await createClickUpTask({
-        ticket,
-        company,
         listId: list.id,
-        space,
+        ticket,
         tags: ['ticket']
       });
 
