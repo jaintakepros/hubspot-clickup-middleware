@@ -140,6 +140,7 @@ async function handleHubSpotTask(event) {
         name: task.properties.hs_task_subject || 'No Subject',
         description,
         due_date: dueDate,
+        start_date: Date.now(),
         assignees,
         priority: task.properties.hs_task_priority === 'HIGH' ? 2 :
                   task.properties.hs_task_priority === 'LOW' ? 4 : 3,

@@ -169,6 +169,7 @@ async function createClickUpTask({ listId, ticket, tags = [] }) {
     name: ticket.properties.subject || 'No Subject',
     description: ticket.properties.content || 'No content provided.',
     due_date: dueDate,
+    start_date: Date.now(), // ⬅️ Fecha actual como timestamp
     assignees,
     priority: mapPriority(ticket.properties.hs_ticket_priority),
     ...(mapStatus(ticket) && { status: mapStatus(ticket) }),
