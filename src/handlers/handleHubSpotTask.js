@@ -93,13 +93,20 @@ async function handleHubSpotTask(event) {
         console.error('❌ No list found to create the ClickUp task.');
         return;
       }
-
+      const hsBody = task.properties.hs_task_body;
       let assignees = [];
       try {
         const hubspotUser = await getHubspotUserById(task.properties.hubspot_owner_id);
         if (hubspotUser?.email) {
           const clickupUserId = await findClickUpUserByEmail(hubspotUser.email);
           if (clickupUserId) assignees = [clickupUserId];
+          if(hubspotUser.email === "lisa@legalintakepros.com" && hsBody.includes('WATCH FATHOM CLIP')){
+            const virginiaClickupId = await findClickUpUserByEmail("virginia@legalintakepros.com");
+            assignees.push(virginiaClickupId);
+          }else if((hubspotUser.email === "desiree@legalintakepros.com" || hubspotUser.email === "anais@legalintakepros.com") && hsBody.includes('WATCH FATHOM CLIP')){
+            const danielaCastrejonClickupId = await findClickUpUserByEmail("daniela@legalintakepros.com");
+            assignees.push(danielaCastrejonClickupId)
+          }
         }
       } catch (e) {}
 
@@ -108,7 +115,7 @@ async function handleHubSpotTask(event) {
         : undefined;
 
       let description = 'No description';
-      const hsBody = task.properties.hs_task_body;
+      
       const tags = [];
       let fathomUrl = null;
       console.log('📦 hs_task_body (raw):', hsBody);
@@ -191,7 +198,7 @@ async function handleHubSpotTask(event) {
         try {
           await axios.post(
             `https://api.clickup.com/api/v2/task/${response.data.id}/field/${fathomUrlFieldId}`,
-            { value: fathomUrl },
+            { value: getFathomBaseUrl(fathomUrl) },
             {
               headers: {
                 Authorization: process.env.CLICKUP_API_KEY,
@@ -257,6 +264,11 @@ async function handleHubSpotTask(event) {
   } finally {
     processingEvents.delete(taskId);
   }
+}
+
+function getFathomBaseUrl(fullUrl) {
+  if (typeof fullUrl !== 'string') return null;
+  return fullUrl.split('?timestamp=')[0];
 }
 
 module.exports = {
