@@ -37,7 +37,7 @@ const STATUS_MAP = {
 const FIELD_MAPPING = {
   task: {
     name: 'hs_task_subject',
-    content: 'hs_task_body',
+    //content: 'hs_task_body',
     due_date: 'hs_timestamp',
     assignees: 'hubspot_owner_id',
     priority: 'hs_task_priority',
