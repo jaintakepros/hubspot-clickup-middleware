@@ -45,7 +45,7 @@ const FIELD_MAPPING = {
   },
   ticket: {
     name: 'subject',
-    content: 'content',
+    //content: 'content',
     due_date: 'closed_date',
     assignees: 'hubspot_owner_id',
     priority: 'hs_ticket_priority',
